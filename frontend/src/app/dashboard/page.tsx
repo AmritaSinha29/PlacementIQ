@@ -1,5 +1,15 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
+
+const mockChartData = [
+  { name: "Oct", score: 62 },
+  { name: "Nov", score: 65 },
+  { name: "Dec", score: 64 },
+  { name: "Jan", score: 68 },
+  { name: "Feb", score: 71 },
+  { name: "Mar", score: 75 },
+]
 
 export default function DashboardOverview() {
   return (
@@ -62,8 +72,28 @@ export default function DashboardOverview() {
             </CardDescription>
           </CardHeader>
           <CardContent className="pl-2">
-            <div className="h-[300px] w-full flex items-center justify-center border-dashed border-2 rounded-md bg-slate-50 dark:bg-slate-900">
-              <p className="text-muted-foreground text-sm">Chart Component Placeholder (Recharts)</p>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={mockChartData}
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#888888'}} />
+                  <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{fill: '#888888'}} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="score" 
+                    stroke="#2563eb" 
+                    strokeWidth={3}
+                    dot={{ r: 4, strokeWidth: 2 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
