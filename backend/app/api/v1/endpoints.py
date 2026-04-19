@@ -7,8 +7,7 @@ from app.schemas.schemas import (
     JobMarketSignalResponse,
     InterventionResponse
 )
-# We would import the database client or CRUD helpers here in a fully integrated state
-# from app.database import get_supabase
+from app.core.security import get_current_user
 
 router = APIRouter()
 
@@ -19,7 +18,7 @@ def trigger_student_score(id: UUID):
     return {"message": f"Scoring triggered for student {id}"}
 
 @router.get("/students/{id}/risk", response_model=RiskScoreResponse)
-def get_student_risk(id: UUID):
+def get_student_risk(id: UUID, current_user: dict = Depends(get_current_user)):
     """Fetch latest risk score, narrative, and SHAP breakdown"""
     # Dummy response strictly following the PRD schema
     return {
@@ -38,7 +37,7 @@ def get_student_actions(id: UUID):
     return []
 
 @router.get("/portfolio/overview")
-def get_portfolio_overview():
+def get_portfolio_overview(current_user: dict = Depends(get_current_user)):
     """Aggregate portfolio risk stats (by tier, program, region)"""
     return {
         "total_students": 5000,
