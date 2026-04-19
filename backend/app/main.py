@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.api.v1.endpoints import router as v1_router
 import os
 
 app = FastAPI(
@@ -24,3 +25,7 @@ def read_root():
 @app.get("/health")
 def health_check():
     return {"status": "healthy", "service": "backend"}
+
+# Include API v1 router
+app.include_router(v1_router, prefix="/v1", tags=["v1"])
+
