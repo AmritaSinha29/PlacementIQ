@@ -8,6 +8,8 @@ from app.schemas.schemas import (
     InterventionResponse
 )
 from app.core.security import get_current_user
+from app.core.llm import generate_risk_narrative
+from app.core.recommendations import get_next_best_actions
 
 router = APIRouter()
 
@@ -17,24 +19,33 @@ def trigger_student_score(id: UUID):
     # This would call the ML model via gRPC or HTTP to the ml_engine
     return {"message": f"Scoring triggered for student {id}"}
 
-@router.get("/students/{id}/risk", response_model=RiskScoreResponse)
+@router.get("/students/{id}/risk", response_model=dict)
 def get_student_risk(id: UUID, current_user: dict = Depends(get_current_user)):
     """Fetch latest risk score, narrative, and SHAP breakdown"""
-    # Dummy response strictly following the PRD schema
+    # Mock data strictly following the PRD schema
+    student_profile = {"course": "B.Tech Computer Science", "cgpa_band": "Low", "semester": 7}
+    shap_values = {"internships": -5.2, "tier_placement_rate": -3.1, "cgpa": -1.1}
+    
+    narrative = generate_risk_narrative(student_profile, shap_values)
+    
     return {
         "id": "123e4567-e89b-12d3-a456-426614174000",
         "student_id": id,
-        "score": 65.5,
-        "band": "High Risk",
+        "score": 85.5,
+        "band": "Critical Risk",
         "timestamp": "2026-04-19T10:00:00Z",
         "model_version": "v1.0",
-        "shap_values": {"cgpa": -5.2, "internships": -3.1}
+        "shap_values": shap_values,
+        "ai_narrative": narrative
     }
 
-@router.get("/students/{id}/actions", response_model=List[InterventionResponse])
+@router.get("/students/{id}/actions", response_model=List[dict])
 def get_student_actions(id: UUID):
     """Fetch ranked intervention recommendations"""
-    return []
+    student_profile = {"course": "B.Tech", "semester": 7}
+    shap_values = {"internships": -5.2}
+    actions = get_next_best_actions(student_profile, "Critical Risk", shap_values)
+    return actions
 
 @router.get("/portfolio/overview")
 def get_portfolio_overview(current_user: dict = Depends(get_current_user)):

@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.endpoints import router as v1_router
+from app.api.v1.websockets import router as ws_router
 import os
 
 app = FastAPI(
@@ -28,4 +29,7 @@ def health_check():
 
 # Include API v1 router
 app.include_router(v1_router, prefix="/v1", tags=["v1"])
+
+# Include WebSockets router
+app.include_router(ws_router, tags=["websockets"])
 
