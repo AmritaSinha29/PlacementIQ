@@ -5,19 +5,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Briefcase, BookOpen, Target, CheckCircle2, Upload, Loader2, IndianRupee } from "lucide-react"
-import { useState } from "react"
-import { supabase } from "@/lib/supabase"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 
 export default function StudentPortal() {
+  const router = useRouter()
   const [resumeFile, setResumeFile] = useState<File | null>(null)
   const [isScanning, setIsScanning] = useState(false)
   const [scanResult, setScanResult] = useState<any>(null)
+
+  useEffect(() => {
+    // Basic auth check
+    if (!localStorage.getItem("placement_iq_token")) {
+      router.push("/login");
+    }
+  }, [router]);
 
   const handleScanResume = async () => {
     if (!resumeFile) return;
     setIsScanning(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const token = localStorage.getItem("placement_iq_token");
       
       const formData = new FormData();
       formData.append("resume", resumeFile);
@@ -25,7 +33,7 @@ export default function StudentPortal() {
       const res = await fetch("http://localhost:8000/v1/resume/predict-salary", {
         method: "POST",
         headers: { 
-          Authorization: `Bearer ${session?.access_token}` 
+          Authorization: `Bearer ${token}` 
         },
         body: formData
       });

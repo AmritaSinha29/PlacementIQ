@@ -50,7 +50,7 @@ export default function Home() {
           </Link>
 
           {/* Student Portal Card */}
-          <Link href="/student" className="group">
+          <Link href="/login" className="group">
             <div className="h-full bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/10 hover:border-purple-200 dark:hover:border-purple-800 flex flex-col">
               <div className="h-14 w-14 bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
                 <GraduationCap className="h-7 w-7" />

@@ -1,19 +1,26 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Webcam from "react-webcam";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Mic, MicOff, Video, Play, Loader2 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
 
 export default function MockInterviewPage() {
+  const router = useRouter();
   const [question, setQuestion] = useState("Tell me about a challenging distributed systems project you've worked on.");
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [feedback, setFeedback] = useState<any>(null);
   
+  useEffect(() => {
+    if (!localStorage.getItem("placement_iq_token")) {
+      router.push("/login");
+    }
+  }, [router]);
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
@@ -29,10 +36,10 @@ export default function MockInterviewPage() {
 
   const startInterview = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const token = localStorage.getItem("placement_iq_token");
       const res = await fetch("http://localhost:8000/v1/interview/start", {
         method: "POST",
-        headers: { Authorization: `Bearer ${session?.access_token}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
       setQuestion(data.question);
@@ -82,7 +89,7 @@ export default function MockInterviewPage() {
 
   const analyzeAudio = async (audioBlob: Blob) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const token = localStorage.getItem("placement_iq_token");
       
       const formData = new FormData();
       formData.append("audio", audioBlob, "answer.webm");
@@ -91,7 +98,7 @@ export default function MockInterviewPage() {
       const res = await fetch("http://localhost:8000/v1/interview/analyze", {
         method: "POST",
         headers: { 
-          Authorization: `Bearer ${session?.access_token}`
+          Authorization: `Bearer ${token}`
           // Do NOT set Content-Type header manually when using FormData, the browser sets it with boundary
         },
         body: formData
