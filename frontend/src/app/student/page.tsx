@@ -76,15 +76,20 @@ export default function StudentPortal() {
               </div>
             </div>
 
-            <div className="flex gap-4">
+              <div className="flex gap-4">
               <div className="flex flex-col items-center">
-                <div className="h-6 w-6 rounded-full border-2 border-slate-300 flex items-center justify-center">
-                  <div className="h-2 w-2 rounded-full bg-slate-300"></div>
+                <div className="h-6 w-6 rounded-full border-2 border-indigo-500 flex items-center justify-center">
+                  <div className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse"></div>
                 </div>
               </div>
-              <div>
-                <h4 className="font-semibold text-slate-500">Upcoming: Mock Interview</h4>
-                <p className="text-sm text-muted-foreground">Will unlock after certification.</p>
+              <div className="w-full">
+                <div className="flex justify-between items-center">
+                  <h4 className="font-semibold text-slate-900 dark:text-white">Active: AI Mock Interview</h4>
+                  <Link href="/student/mock-interview">
+                    <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700">Start Session</Button>
+                  </Link>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">Practice your speaking skills and tech confidence with our Voice AI.</p>
               </div>
             </div>
           </CardContent>
