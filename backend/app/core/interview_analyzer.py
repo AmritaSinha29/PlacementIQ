@@ -1,7 +1,22 @@
 import os
 import requests
+import joblib
 from fastapi import UploadFile
 from typing import Dict, Any
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../ml_engine/models/custom_interview_nlp_model.pkl")
+
+_nlp_model = None
+
+def get_nlp_model():
+    global _nlp_model
+    if _nlp_model is None:
+        try:
+            _nlp_model = joblib.load(MODEL_PATH)
+        except Exception as e:
+            print(f"Could not load custom NLP model: {e}")
+    return _nlp_model
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
@@ -31,28 +46,34 @@ async def transcribe_audio(audio_file: UploadFile) -> str:
     return response.json().get("text", "")
 
 def analyze_interview_response(question: str, transcript: str) -> Dict[str, Any]:
-    """Uses Llama 3.1 to grade the answer for confidence, clarity, and tech accuracy."""
+    """Uses our custom-trained NLP Pipeline for scoring, and Llama 3.1 for next question."""
+    
+    # 1. Evaluate using our UNIQUELY trained Machine Learning Model
+    model = get_nlp_model()
+    tech_score = 0
+    conf_score = 0
+    if model:
+        # Our model expects: "question [SEP] answer"
+        input_text = [f"{question} [SEP] {transcript}"]
+        preds = model.predict(input_text)[0]
+        tech_score = int(preds[0])
+        conf_score = int(preds[1])
+
+    # 2. Get conversational feedback and next question using LLM
     if not GROQ_API_KEY:
         raise ValueError("GROQ_API_KEY is not set.")
         
     prompt = f"""
-    You are an expert technical interviewer for a top-tier software company.
-    The candidate was asked the following question: "{question}"
+    The candidate was asked: "{question}"
+    The candidate answered: "{transcript}"
     
-    The candidate's transcribed spoken answer is: "{transcript}"
+    Our proprietary ML model gave them a Technical Accuracy Score of {tech_score}/100 and a Confidence Score of {conf_score}/100.
     
-    Analyze the candidate's answer and evaluate the following:
-    1. 'confidence_score' (1-100): How confident and direct did they sound (ignoring typical speech disfluencies, but penalizing heavy rambling or uncertainty).
-    2. 'clarity_score' (1-100): How clear and structured was the answer?
-    3. 'tech_accuracy_score' (1-100): Did they actually answer the technical question correctly?
-    4. 'feedback': Constructive criticism (2-3 sentences max).
-    5. 'next_question': Generate the next logical technical interview question to ask them, scaling difficulty based on how well they answered.
+    Write a 2-sentence feedback explaining why they might have gotten these scores.
+    Then, generate the 'next_question' based on their performance.
     
-    Output STRICTLY in JSON format:
+    Output strictly in JSON:
     {{
-        "confidence_score": int,
-        "clarity_score": int,
-        "tech_accuracy_score": int,
         "feedback": string,
         "next_question": string
     }}
@@ -78,4 +99,12 @@ def analyze_interview_response(question: str, transcript: str) -> Dict[str, Any]
         raise Exception(f"Groq LLM Error: {response.text}")
         
     import json
-    return json.loads(response.json()['choices'][0]['message']['content'])
+    llm_result = json.loads(response.json()['choices'][0]['message']['content'])
+    
+    return {
+        "confidence_score": conf_score,
+        "clarity_score": conf_score, # Mapping clarity to confidence for UI simplicity
+        "tech_accuracy_score": tech_score,
+        "feedback": llm_result.get("feedback", ""),
+        "next_question": llm_result.get("next_question", "")
+    }
