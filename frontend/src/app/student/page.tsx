@@ -2,9 +2,37 @@ import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { Briefcase, BookOpen, Target, CheckCircle2 } from "lucide-react"
+import { Briefcase, BookOpen, Target, CheckCircle2, Upload, Loader2, IndianRupee } from "lucide-react"
+import { useState } from "react"
+import { supabase } from "@/lib/supabase"
 
 export default function StudentPortal() {
+  const [resumeText, setResumeText] = useState("")
+  const [isScanning, setIsScanning] = useState(false)
+  const [scanResult, setScanResult] = useState<any>(null)
+
+  const handleScanResume = async () => {
+    if (!resumeText) return;
+    setIsScanning(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("http://localhost:8000/v1/resume/predict-salary", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}` 
+        },
+        body: JSON.stringify({ resume_text: resumeText })
+      });
+      const data = await res.json();
+      setScanResult(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen w-full bg-slate-50 dark:bg-slate-950 flex-col">
       {/* Navigation */}
@@ -91,6 +119,68 @@ export default function StudentPortal() {
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">Practice your speaking skills and tech confidence with our Voice AI.</p>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* AI Resume Scanner & Salary Predictor */}
+        <Card className="md:col-span-3 border-indigo-100 dark:border-indigo-900">
+          <CardHeader className="bg-indigo-50/50 dark:bg-indigo-900/10">
+            <CardTitle className="flex items-center gap-2 text-indigo-700 dark:text-indigo-400">
+              <Upload className="h-5 w-5" /> AI Resume Scanner & Salary Predictor
+            </CardTitle>
+            <CardDescription>Paste your raw resume text to instantly extract features and predict your starting salary based on our ML model.</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6 grid md:grid-cols-2 gap-6">
+            <div className="flex flex-col gap-4">
+              <textarea 
+                className="w-full h-48 p-3 rounded-md border border-input bg-transparent shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-sm"
+                placeholder="Paste your full text resume here..."
+                value={resumeText}
+                onChange={(e) => setResumeText(e.target.value)}
+              />
+              <Button onClick={handleScanResume} disabled={isScanning || !resumeText} className="w-full bg-indigo-600 hover:bg-indigo-700">
+                {isScanning ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scanning with LLM...</> : "Predict Market Salary"}
+              </Button>
+            </div>
+            
+            <div className="flex flex-col">
+              {scanResult ? (
+                <div className="bg-slate-50 dark:bg-slate-900 border rounded-lg p-6 flex flex-col h-full justify-center">
+                  <div className="text-center mb-6">
+                    <p className="text-sm text-muted-foreground font-medium uppercase tracking-wider mb-2">Predicted Starting Offer</p>
+                    <div className="flex items-center justify-center text-5xl font-extrabold text-green-600 dark:text-green-500">
+                      <IndianRupee className="h-8 w-8 mr-1 opacity-80" /> {scanResult.predicted_salary_lpa} <span className="text-2xl text-muted-foreground ml-2">LPA</span>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2 text-sm border-t pt-4">
+                    <p className="font-semibold text-slate-700 dark:text-slate-300 mb-3">Extracted Profile:</p>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                      <div className="flex justify-between border-b pb-1">
+                        <span className="text-muted-foreground">Institute Tier</span>
+                        <span className="font-medium text-right">{scanResult.extracted_classifications.institute_tier}</span>
+                      </div>
+                      <div className="flex justify-between border-b pb-1">
+                        <span className="text-muted-foreground">Highest Project</span>
+                        <span className="font-medium text-right truncate w-32" title={scanResult.extracted_classifications.highest_project_level}>{scanResult.extracted_classifications.highest_project_level}</span>
+                      </div>
+                      <div className="flex justify-between border-b pb-1">
+                        <span className="text-muted-foreground">Coding Rank</span>
+                        <span className="font-medium text-right">{scanResult.extracted_classifications.coding_level}</span>
+                      </div>
+                      <div className="flex justify-between border-b pb-1">
+                        <span className="text-muted-foreground">Top Internship</span>
+                        <span className="font-medium text-right truncate w-32" title={scanResult.extracted_classifications.highest_internship_level}>{scanResult.extracted_classifications.highest_internship_level}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed rounded-lg flex items-center justify-center h-full text-muted-foreground bg-slate-50/50 dark:bg-slate-900/50">
+                  Waiting for resume...
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
