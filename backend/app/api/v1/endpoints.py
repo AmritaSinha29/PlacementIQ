@@ -11,6 +11,8 @@ from app.core.security import get_current_user
 from app.core.llm import generate_risk_narrative
 from app.core.recommendations import get_next_best_actions
 from app.core.resume_scanner import scan_resume_and_predict
+from app.core.interview_analyzer import transcribe_audio, analyze_interview_response
+from fastapi import UploadFile, File, Form
 
 router = APIRouter()
 
@@ -74,6 +76,29 @@ def predict_salary_from_resume(upload: ResumeUpload, current_user: dict = Depend
     try:
         result = scan_resume_and_predict(upload.resume_text)
         return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/interview/start")
+def start_mock_interview(current_user: dict = Depends(get_current_user)):
+    """Starts the mock interview and returns the first question."""
+    return {"question": "Tell me about a challenging distributed systems project you've worked on, and how you handled concurrency issues."}
+
+@router.post("/interview/analyze")
+async def analyze_interview(
+    audio: UploadFile = File(...), 
+    question: str = Form(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Transcribes user audio and analyzes speaking skills & technical accuracy."""
+    try:
+        transcript = await transcribe_audio(audio)
+        if not transcript:
+            return {"error": "Could not hear any speech. Please try again."}
+            
+        analysis = analyze_interview_response(question, transcript)
+        analysis["transcript"] = transcript
+        return analysis
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
