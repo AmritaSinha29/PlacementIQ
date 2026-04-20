@@ -47,6 +47,22 @@ def get_student_actions(id: UUID):
     actions = get_next_best_actions(student_profile, "Critical Risk", shap_values)
     return actions
 
+@router.get("/students/{id}/salary-prediction")
+def get_student_salary_prediction(id: UUID, current_user: dict = Depends(get_current_user)):
+    """Fetch the LightGBM predicted starting salary (LPA) for the student."""
+    # In a real environment, this would invoke the saved model 'salary_lgb_model.pkl'
+    # using the student's extracted features. For demonstration, returning a mock value.
+    return {
+        "student_id": id,
+        "predicted_salary_lpa": 6.5,
+        "confidence_interval": [5.2, 7.8],
+        "top_drivers": {
+            "tier": "+2.0",
+            "internships": "+0.8",
+            "macro_demand": "-0.5"
+        }
+    }
+
 @router.get("/portfolio/overview")
 def get_portfolio_overview(current_user: dict = Depends(get_current_user)):
     """Aggregate portfolio risk stats (by tier, program, region)"""
