@@ -13,9 +13,12 @@ from app.core.recommendations import get_next_best_actions
 from app.core.resume_scanner import scan_resume_and_predict
 from app.core.interview_analyzer import transcribe_audio, analyze_interview_response
 from app.core.cv_analyzer import analyze_body_language
-from fastapi import UploadFile, File, Form
+from fastapi import UploadFile, File, Form, Depends, APIRouter, HTTPException
 import shutil
 import os
+import io
+from pypdf import PdfReader
+from docx import Document
 
 router = APIRouter()
 
@@ -69,18 +72,37 @@ def get_student_salary_prediction(id: UUID, current_user: dict = Depends(get_cur
         }
     }
 
-from pydantic import BaseModel
-class ResumeUpload(BaseModel):
-    resume_text: str
-
 @router.post("/resume/predict-salary")
-def predict_salary_from_resume(upload: ResumeUpload, current_user: dict = Depends(get_current_user)):
-    """Inbuilt resume scanner: Parses text resume and predicts salary using LightGBM."""
+async def predict_salary(
+    resume: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Parses PDF/DOCX resume, classifies text using LLM, and predicts salary with LightGBM."""
     try:
-        result = scan_resume_and_predict(upload.resume_text)
+        content = await resume.read()
+        filename = resume.filename.lower()
+        extracted_text = ""
+        
+        if filename.endswith(".pdf"):
+            reader = PdfReader(io.BytesIO(content))
+            extracted_text = " ".join([page.extract_text() for page in reader.pages if page.extract_text()])
+        elif filename.endswith(".docx"):
+            doc = Document(io.BytesIO(content))
+            extracted_text = " ".join([paragraph.text for paragraph in doc.paragraphs])
+        elif filename.endswith(".txt"):
+            extracted_text = content.decode("utf-8")
+        else:
+            raise HTTPException(status_code=400, detail="Only PDF, DOCX, and TXT files are supported.")
+            
+        if len(extracted_text.strip()) < 50:
+            raise HTTPException(status_code=400, detail="Could not extract enough text from the document.")
+            
+        result = scan_resume_and_predict(extracted_text)
         return result
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Error processing resume: {str(e)}")
 
 @router.post("/interview/start")
 def start_mock_interview(current_user: dict = Depends(get_current_user)):

@@ -9,27 +9,36 @@ import { useState } from "react"
 import { supabase } from "@/lib/supabase"
 
 export default function StudentPortal() {
-  const [resumeText, setResumeText] = useState("")
+  const [resumeFile, setResumeFile] = useState<File | null>(null)
   const [isScanning, setIsScanning] = useState(false)
   const [scanResult, setScanResult] = useState<any>(null)
 
   const handleScanResume = async () => {
-    if (!resumeText) return;
+    if (!resumeFile) return;
     setIsScanning(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      
+      const formData = new FormData();
+      formData.append("resume", resumeFile);
+      
       const res = await fetch("http://localhost:8000/v1/resume/predict-salary", {
         method: "POST",
         headers: { 
-          "Content-Type": "application/json",
           Authorization: `Bearer ${session?.access_token}` 
         },
-        body: JSON.stringify({ resume_text: resumeText })
+        body: formData
       });
+      
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      
       const data = await res.json();
       setScanResult(data);
     } catch (err) {
       console.error(err);
+      alert("Failed to process document. Please ensure it's a valid PDF or DOCX.");
     } finally {
       setIsScanning(false);
     }
@@ -134,18 +143,25 @@ export default function StudentPortal() {
             <CardTitle className="flex items-center gap-2 text-indigo-700 dark:text-indigo-400">
               <Upload className="h-5 w-5" /> AI Resume Scanner & Salary Predictor
             </CardTitle>
-            <CardDescription>Paste your raw resume text to instantly extract features and predict your starting salary based on our ML model.</CardDescription>
+            <CardDescription>Upload your PDF or DOCX resume to instantly extract features and predict your starting salary based on our ML model.</CardDescription>
           </CardHeader>
           <CardContent className="pt-6 grid md:grid-cols-2 gap-6">
             <div className="flex flex-col gap-4">
-              <textarea 
-                className="w-full h-48 p-3 rounded-md border border-input bg-transparent shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-sm"
-                placeholder="Paste your full text resume here..."
-                value={resumeText}
-                onChange={(e) => setResumeText(e.target.value)}
-              />
-              <Button onClick={handleScanResume} disabled={isScanning || !resumeText} className="w-full bg-indigo-600 hover:bg-indigo-700">
-                {isScanning ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scanning with LLM...</> : "Predict Market Salary"}
+              <div className="border-2 border-dashed border-indigo-200 dark:border-indigo-800 rounded-lg p-8 flex flex-col items-center justify-center bg-white dark:bg-slate-900 h-48 relative hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
+                <Upload className="h-10 w-10 text-indigo-400 mb-4" />
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-300 text-center">
+                  {resumeFile ? resumeFile.name : "Drag & drop or click to upload resume"}
+                </p>
+                <p className="text-xs text-slate-500 mt-2">Supports .PDF, .DOCX</p>
+                <input 
+                  type="file" 
+                  accept=".pdf,.docx,.txt"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
+                />
+              </div>
+              <Button onClick={handleScanResume} disabled={isScanning || !resumeFile} className="w-full bg-indigo-600 hover:bg-indigo-700">
+                {isScanning ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Extracting with LLM...</> : "Predict Market Salary"}
               </Button>
             </div>
             
