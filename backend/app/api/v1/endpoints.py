@@ -10,6 +10,7 @@ from app.schemas.schemas import (
 from app.core.security import get_current_user
 from app.core.llm import generate_risk_narrative
 from app.core.recommendations import get_next_best_actions
+from app.core.resume_scanner import scan_resume_and_predict
 
 router = APIRouter()
 
@@ -62,6 +63,19 @@ def get_student_salary_prediction(id: UUID, current_user: dict = Depends(get_cur
             "macro_demand": "-0.5"
         }
     }
+
+from pydantic import BaseModel
+class ResumeUpload(BaseModel):
+    resume_text: str
+
+@router.post("/resume/predict-salary")
+def predict_salary_from_resume(upload: ResumeUpload, current_user: dict = Depends(get_current_user)):
+    """Inbuilt resume scanner: Parses text resume and predicts salary using LightGBM."""
+    try:
+        result = scan_resume_and_predict(upload.resume_text)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/portfolio/overview")
 def get_portfolio_overview(current_user: dict = Depends(get_current_user)):

@@ -20,6 +20,7 @@ def generate_salary_dataset(num_samples=100000, output_path="advanced_synthetic_
     github_commits = np.random.exponential(300, num_samples).astype(int).clip(0, 3000)
     hackathon_wins = np.random.poisson(0.5, num_samples).clip(0, 5)
     past_internships = np.random.poisson(1.2, num_samples).clip(0, 4)
+    projects = np.random.poisson(3.0, num_samples).clip(0, 10)
     
     # 3. Macro & Soft Skills
     communication_score = np.random.normal(70, 15, num_samples).clip(0, 100)
@@ -35,6 +36,7 @@ def generate_salary_dataset(num_samples=100000, output_path="advanced_synthetic_
     github_mod = (github_commits / 500) * 1.0
     hackathon_mod = hackathon_wins * 2.5
     internship_mod = past_internships * 1.8
+    project_mod = projects * 0.5
     comm_mod = (communication_score - 50) * 0.05
     macro_mod = sector_demand_index
     
@@ -42,7 +44,7 @@ def generate_salary_dataset(num_samples=100000, output_path="advanced_synthetic_
     noise = np.random.normal(0, 1.5, num_samples)
     
     # Final Calculation
-    salary_lpa = (base_salary + cgpa_mod + leetcode_mod + github_mod + hackathon_mod + internship_mod + comm_mod) * macro_mod + noise
+    salary_lpa = (base_salary + cgpa_mod + leetcode_mod + github_mod + hackathon_mod + internship_mod + project_mod + comm_mod) * macro_mod + noise
     salary_lpa = np.maximum(salary_lpa, 3.0) # Absolute minimum floor is 3 LPA
     
     # Create DataFrame
@@ -53,6 +55,7 @@ def generate_salary_dataset(num_samples=100000, output_path="advanced_synthetic_
         'github_commits_last_year': github_commits,
         'hackathon_wins': hackathon_wins,
         'past_internships': past_internships,
+        'projects': projects,
         'communication_score': round(pd.Series(communication_score), 1),
         'sector_demand_index': round(pd.Series(sector_demand_index), 2),
         'salary_lpa': round(pd.Series(salary_lpa), 2)
