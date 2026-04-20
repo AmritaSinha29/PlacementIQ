@@ -44,8 +44,8 @@ export default function MockInterviewPage() {
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -56,7 +56,7 @@ export default function MockInterviewPage() {
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'video/webm' });
         await analyzeAudio(audioBlob);
         
         // Stop all audio tracks
@@ -193,7 +193,13 @@ export default function MockInterviewPage() {
                   <strong>You said:</strong> "{feedback.transcript}"
                 </div>
                 
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="flex flex-col items-center p-3 bg-white dark:bg-black/40 rounded border">
+                    <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1 text-center">Body Language</span>
+                    <span className={`text-2xl font-bold ${feedback.body_language_score > 70 ? 'text-green-600' : 'text-amber-600'}`}>
+                      {feedback.body_language_score}/100
+                    </span>
+                  </div>
                   <div className="flex flex-col items-center p-3 bg-white dark:bg-black/40 rounded border">
                     <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">Confidence</span>
                     <span className={`text-2xl font-bold ${feedback.confidence_score > 70 ? 'text-green-600' : 'text-amber-600'}`}>
@@ -207,7 +213,7 @@ export default function MockInterviewPage() {
                     </span>
                   </div>
                   <div className="flex flex-col items-center p-3 bg-white dark:bg-black/40 rounded border">
-                    <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">Tech Accuracy</span>
+                    <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1 text-center">Tech Accuracy</span>
                     <span className={`text-2xl font-bold ${feedback.tech_accuracy_score > 70 ? 'text-green-600' : 'text-amber-600'}`}>
                       {feedback.tech_accuracy_score}/100
                     </span>

@@ -12,7 +12,10 @@ from app.core.llm import generate_risk_narrative
 from app.core.recommendations import get_next_best_actions
 from app.core.resume_scanner import scan_resume_and_predict
 from app.core.interview_analyzer import transcribe_audio, analyze_interview_response
+from app.core.cv_analyzer import analyze_body_language
 from fastapi import UploadFile, File, Form
+import shutil
+import os
 
 router = APIRouter()
 
@@ -90,14 +93,34 @@ async def analyze_interview(
     question: str = Form(...),
     current_user: dict = Depends(get_current_user)
 ):
-    """Transcribes user audio and analyzes speaking skills & technical accuracy."""
+    """Transcribes user audio, analyzes speaking skills, and processes video for body language."""
     try:
+        # Save the uploaded video/audio blob to a temp file for CV processing
+        temp_file_path = f"temp_{current_user.get('id', 'interview')}.webm"
+        with open(temp_file_path, "wb") as buffer:
+            shutil.copyfileobj(audio.file, buffer)
+            
+        # 1. Run CV Analysis for Body Language Score
+        body_language_score = analyze_body_language(temp_file_path)
+        
+        # Reset file pointer for Groq Whisper
+        await audio.seek(0)
+        
+        # 2. Transcribe Audio
         transcript = await transcribe_audio(audio)
+        
+        # Cleanup temp file
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+            
         if not transcript:
             return {"error": "Could not hear any speech. Please try again."}
             
+        # 3. Analyze Speech
         analysis = analyze_interview_response(question, transcript)
         analysis["transcript"] = transcript
+        analysis["body_language_score"] = body_language_score
+        
         return analysis
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
