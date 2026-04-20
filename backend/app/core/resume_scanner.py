@@ -9,7 +9,6 @@ from dotenv import load_dotenv
 load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# Load the LightGBM model (Assuming it's mounted or accessible)
 MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../ml_engine/models/salary_lgb_model.pkl")
 _model = None
 
@@ -23,26 +22,32 @@ def get_model():
     return _model
 
 def extract_features_from_resume(resume_text: str) -> Dict[str, Any]:
-    """Uses Groq to extract structured data from a raw resume text."""
+    """Uses Groq to extract and classify structured categorical data from a raw resume text."""
     if not GROQ_API_KEY:
         raise ValueError("GROQ_API_KEY is not set.")
         
     prompt = f"""
-    You are an expert technical recruiter AI. Extract the following metrics from the provided resume.
-    If a metric is not explicitly stated, estimate it reasonably based on the context, or use these defaults:
-    tier: 3 (1=elite, 2=mid, 3=average), cgpa: 7.0, leetcode_problems_solved: 50, github_commits_last_year: 100, hackathon_wins: 0, past_internships: 0, projects: 1, communication_score: 70, sector_demand_index: 1.0.
+    You are an expert technical recruiter AI. Analyze the provided resume and classify the student's background into the EXACT specific categorical strings provided below.
+    Do NOT invent your own categories. You must pick the one that best applies.
+    
+    Categories to pick from:
+    1. institute_tier: 'Tier 4 (Local)', 'Tier 3 (State)', 'Tier 2 (NIT/IIIT)', 'Tier 1 (IIT/BITS)'
+    2. highest_project_level: 'None', 'Basic Scripts/CLI', 'Simple CRUD/Web', 'Intermediate Fullstack', 'Advanced Cloud/DevOps', 'AI/ML/Data Pipelines', 'Enterprise Distributed Systems', 'Novel Research/Patents'
+    3. highest_internship_level: 'None', 'Unpaid/Local Startup', 'Mid-size Agency', 'Series A/B Startup', 'Fortune 500 Non-Tech', 'Unicorn Tech Startup', 'FAANG/Big Tech/HFT'
+    4. highest_hackathon_level: 'None', 'College Level Participant', 'College Level Winner', 'National Level Participant', 'National Level Winner', 'International/Global Winner'
+    5. coding_level: 'Beginner (0-50 Easy)', 'Novice (100+ Mixed)', 'Intermediate (Top 10%)', 'Advanced (Top 2%)', 'Elite (ICPC/Global Ranker)'
+    
+    If you cannot find evidence for a category, pick the lowest tier (e.g., 'None' or 'Tier 3 (State)').
+    Also extract the student's cgpa as a float (e.g., 8.5). If not found, default to 7.0.
     
     Output strictly in JSON format matching this schema:
     {{
-        "tier": int,
+        "institute_tier": string,
         "cgpa": float,
-        "leetcode_problems_solved": int,
-        "github_commits_last_year": int,
-        "hackathon_wins": int,
-        "past_internships": int,
-        "projects": int,
-        "communication_score": float,
-        "sector_demand_index": float
+        "highest_project_level": string,
+        "highest_internship_level": string,
+        "highest_hackathon_level": string,
+        "coding_level": string
     }}
     
     Resume Text:
@@ -57,7 +62,7 @@ def extract_features_from_resume(resume_text: str) -> Dict[str, Any]:
     payload = {
         "model": "llama-3.1-8b-instant",
         "messages": [
-            {"role": "system", "content": "You are a JSON-only API. Only return valid JSON."},
+            {"role": "system", "content": "You are a JSON-only API. Only return valid JSON with exact string matches."},
             {"role": "user", "content": prompt}
         ],
         "response_format": {"type": "json_object"},
@@ -72,19 +77,22 @@ def extract_features_from_resume(resume_text: str) -> Dict[str, Any]:
     return json.loads(result_text)
 
 def scan_resume_and_predict(resume_text: str) -> Dict[str, Any]:
-    """End-to-end pipeline: Parse resume -> Extract Features -> Predict Salary"""
-    # 1. Extract Features
+    """End-to-end pipeline: Parse resume -> Classify Features -> Predict Salary"""
+    # 1. Extract and Classify Features via LLM
     features = extract_features_from_resume(resume_text)
     
     # 2. Prepare DataFrame for LightGBM
-    # Order must match the training set exactly:
-    # tier, cgpa, leetcode_problems_solved, github_commits_last_year, hackathon_wins, past_internships, projects, communication_score, sector_demand_index
     feature_cols = [
-        'tier', 'cgpa', 'leetcode_problems_solved', 'github_commits_last_year', 
-        'hackathon_wins', 'past_internships', 'projects', 'communication_score', 'sector_demand_index'
+        'institute_tier', 'cgpa', 'highest_project_level', 
+        'highest_internship_level', 'highest_hackathon_level', 'coding_level'
     ]
     
     df = pd.DataFrame([features])[feature_cols]
+    
+    # Convert string columns to categorical for LightGBM
+    for col in feature_cols:
+        if col != 'cgpa':
+            df[col] = df[col].astype('category')
     
     # 3. Predict Salary
     model = get_model()
@@ -94,6 +102,6 @@ def scan_resume_and_predict(resume_text: str) -> Dict[str, Any]:
     predicted_salary = float(model.predict(df)[0])
     
     return {
-        "extracted_features": features,
+        "extracted_classifications": features,
         "predicted_salary_lpa": round(predicted_salary, 2)
     }
