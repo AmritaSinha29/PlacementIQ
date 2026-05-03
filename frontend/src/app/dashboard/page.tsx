@@ -1,17 +1,14 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
+import dynamic from "next/dynamic";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
-const mockChartData = [
-  { name: "Oct", score: 62 },
-  { name: "Nov", score: 65 },
-  { name: "Dec", score: 64 },
-  { name: "Jan", score: 68 },
-  { name: "Feb", score: 71 },
-  { name: "Mar", score: 75 },
-]
+// Lazy-load Recharts with ssr:false — avoids the height(-1) warning during SSG
+const RiskTrendChart = dynamic(() => import("./RiskTrendChart"), {
+  ssr: false,
+  loading: () => <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">Loading chart...</div>,
+});
 
 export default function DashboardOverview() {
   return (
@@ -25,6 +22,7 @@ export default function DashboardOverview() {
         </div>
       </div>
 
+      {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -65,46 +63,21 @@ export default function DashboardOverview() {
         </Card>
       </div>
 
+      {/* Chart + Alerts Row */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4">
           <CardHeader>
             <CardTitle>Risk Trend</CardTitle>
-            <CardDescription>
-              Average portfolio risk score over the last 6 months.
-            </CardDescription>
+            <CardDescription>Average portfolio risk score over the last 6 months.</CardDescription>
           </CardHeader>
           <CardContent className="pl-2">
-            <div className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                  data={mockChartData}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#888888'}} />
-                  <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{fill: '#888888'}} />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="score" 
-                    stroke="#2563eb" 
-                    strokeWidth={3}
-                    dot={{ r: 4, strokeWidth: 2 }}
-                    activeDot={{ r: 6 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            <RiskTrendChart />
           </CardContent>
         </Card>
         <Card className="col-span-3">
           <CardHeader>
             <CardTitle>Recent Risk Alerts</CardTitle>
-            <CardDescription>
-              Borrowers crossing risk thresholds this week.
-            </CardDescription>
+            <CardDescription>Borrowers crossing risk thresholds this week.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -112,9 +85,7 @@ export default function DashboardOverview() {
                 <div key={i} className="flex items-center justify-between border-b pb-2 last:border-0">
                   <div className="space-y-1">
                     <p className="text-sm font-medium leading-none">Student ID: ...{1000 + i}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Moved from Medium to High Risk
-                    </p>
+                    <p className="text-sm text-muted-foreground">Moved from Medium to High Risk</p>
                   </div>
                   <div className="font-medium text-amber-600 text-sm">Score: 68</div>
                 </div>
@@ -124,5 +95,5 @@ export default function DashboardOverview() {
         </Card>
       </div>
     </div>
-  )
+  );
 }
