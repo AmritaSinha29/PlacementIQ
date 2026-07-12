@@ -55,3 +55,11 @@ mlruns/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local debug / scratch artifacts
+*.webm
+backend/temp_*
+backend/test.py
+backend/test_interview.py
+backend/test_predictions.py
+backend/test_resume.*
