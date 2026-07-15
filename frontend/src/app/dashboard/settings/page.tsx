@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Bell, Shield, Users, Sliders } from "lucide-react";
+import { API_BASE_URL } from "@/lib/api";
 
 export default function SettingsPage() {
   return (
@@ -98,7 +99,7 @@ export default function SettingsPage() {
           {[
             { label: "Organization", value: "Demo NBFC Lender" },
             { label: "Tenant ID", value: "demo-tenant-001" },
-            { label: "API Base URL", value: "http://localhost:8000" },
+            { label: "API Base URL", value: API_BASE_URL },
             { label: "Portfolio Size", value: "5,000 borrowers" },
           ].map(({ label, value }) => (
             <div key={label} className="flex justify-between py-2 border-b last:border-0 text-sm">

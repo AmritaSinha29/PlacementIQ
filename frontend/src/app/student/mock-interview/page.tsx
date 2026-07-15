@@ -11,6 +11,7 @@ import {
   Mic, MicOff, Video, Play, Loader2, ArrowLeft,
   Volume2, CheckCircle2, AlertCircle,
 } from "lucide-react";
+import { apiUrl } from "@/lib/api";
 
 const FIRST_QUESTION =
   "Tell me about a challenging project you've built and how you handled technical complexity.";
@@ -25,6 +26,8 @@ export default function MockInterviewPage() {
   const [feedback, setFeedback] = useState<any>(null);
   const [sessionStarted, setSessionStarted] = useState(false);
   const [roundNumber, setRoundNumber] = useState(1);
+  const [category, setCategory] = useState<"behavioral" | "technical">("behavioral");
+  const [resumeContext, setResumeContext] = useState("");
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -34,6 +37,8 @@ export default function MockInterviewPage() {
       router.push("/login");
     } else {
       setAuthChecked(true);
+      const savedContext = localStorage.getItem("placement_iq_resume_context");
+      if (savedContext) setResumeContext(savedContext);
     }
   }, [router]);
 
@@ -52,9 +57,16 @@ export default function MockInterviewPage() {
   const startInterview = async () => {
     try {
       const token = localStorage.getItem("placement_iq_token");
-      const res = await fetch("http://localhost:8000/v1/interview/start", {
+      const res = await fetch(apiUrl("/v1/interview/start"), {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { 
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          category,
+          resume_context: resumeContext
+        })
       });
       if (!res.ok) throw new Error("Backend unreachable");
       const data = await res.json();
@@ -108,14 +120,25 @@ export default function MockInterviewPage() {
       const formData = new FormData();
       formData.append("audio", audioBlob, "answer.webm");
       formData.append("question", question);
+      formData.append("category", category);
+      formData.append("resume_context", resumeContext);
 
-      const res = await fetch("http://localhost:8000/v1/interview/analyze", {
+      const res = await fetch(apiUrl("/v1/interview/analyze"), {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
 
       const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.detail || data.error || "Server returned an error");
+      }
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
       setFeedback(data);
       setIsProcessing(false);
 
@@ -184,13 +207,25 @@ export default function MockInterviewPage() {
                 Practice technical communication — scored by voice AI and computer vision.
               </p>
             </div>
-            <Button
-              onClick={startInterview}
-              className="bg-indigo-600 hover:bg-indigo-700 shrink-0"
-            >
-              <Play className="mr-2 h-4 w-4" />
-              {sessionStarted ? "New Session" : "Start Session"}
-            </Button>
+            <div className="flex gap-3">
+              {!sessionStarted && (
+                <select 
+                  className="bg-white dark:bg-slate-900 border rounded-md px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value as any)}
+                >
+                  <option value="behavioral">Behavioral/HR</option>
+                  <option value="technical">Technical</option>
+                </select>
+              )}
+              <Button
+                onClick={startInterview}
+                className="bg-indigo-600 hover:bg-indigo-700 shrink-0"
+              >
+                <Play className="mr-2 h-4 w-4" />
+                {sessionStarted ? "New Session" : "Start Session"}
+              </Button>
+            </div>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">

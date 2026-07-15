@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { apiUrl } from "@/lib/api";
 
 export default function StudentPortal() {
   const router = useRouter();
@@ -40,13 +41,18 @@ export default function StudentPortal() {
       const token = localStorage.getItem("placement_iq_token");
       const formData = new FormData();
       formData.append("resume", resumeFile);
-      const res = await fetch("http://localhost:8000/v1/resume/predict-salary", {
+      const res = await fetch(apiUrl("/v1/resume/predict-salary"), {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
       if (!res.ok) throw new Error(await res.text());
-      setScanResult(await res.json());
+      const data = await res.json();
+      setScanResult(data);
+      // Save features for mock interview context
+      if (data.extracted_classifications) {
+        localStorage.setItem("placement_iq_resume_context", JSON.stringify(data.extracted_classifications));
+      }
     } catch (err) {
       console.error(err);
       alert("Failed to process document. Please ensure it's a valid PDF or DOCX and the backend is running.");
